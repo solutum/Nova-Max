@@ -1,12 +1,17 @@
+# https://youtu.be/RHmTgapLu4s
 import collections, math
 import numpy as np
-
-from PyQt5.QtWidgets import QApplication, QMainWindow
-
-from Qt import QtCore
+import time
 import pyqtgraph as pg
 
-from qspectrumanalyzer.data import DataStorage
+from collections import defaultdict
+
+from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtCore import QTimer
+from Qt import QtCore
+
+# from qspectrumanalyzer.data import DataStorage
+from utils import read_lines_from_file
 
 
 # Basic PyQtGraph settings
@@ -212,12 +217,13 @@ class SpectrumPlotWidget:
 		pos = evt[0]
 		if self.plot.sceneBoundingRect().contains(pos):
 			mousePoint = self.plot.vb.mapSceneToView(pos)
-			self.posLabel.setText(
+			# ! змінюється розмір коли навожу мишку
+			"""self.posLabel.setText(
 				"<span style='font-size: 12pt'>f={:0.3f} MHz, P={:0.3f} dB</span>".format(
 					mousePoint.x() / 1e6,
 					mousePoint.y()
 				)
-			)
+			)"""
 			self.vLine.setPos(mousePoint.x())
 			self.hLine.setPos(mousePoint.y())
 
@@ -321,11 +327,63 @@ class WaterfallPlotWidget:
 		"""Clear waterfall plot"""
 		self.counter = 0
 
+class SpectrumData:
+	def __init__(self):
+		pass
 
-class MyMainWindow(QMainWindow):
+	def frange(self, start, stop, step):
+		i = 0
+		f = start
+		while f <= stop:
+			f = start + step*i
+			yield f
+			i += 1
+
+	def flatten_xy_for_spectrum(self, data):
+		x_vals = []
+		y_vals = []
+
+		sums = defaultdict(float)
+		counts = defaultdict(int)
+
+		# data = g.csv_data[0] # GET only 1st row
+		data = data.strip().split(', ')
+		low = int(data[2])
+		high = int(data[3])
+		step = float(data[4])
+		weight = int(data[5])
+		dbm = [float(d) for d in data[6:]]
+		for f,d in zip(self.frange(low, high, step), dbm):
+			sums[f] += d*weight
+			counts[f] += weight
+
+		ave = defaultdict(float)
+		for f in sums:
+			ave[f] = sums[f] / counts[f]
+
+		for f in sorted(ave):
+			# print(','.join([str(f), str(ave[f])]))
+			x_vals.append(float(f))
+			y_vals.append(float(ave[f]))
+			# x_vals[-1] += g.offset
+			x_vals[-1] /= 1000000.0
+
+		return x_vals, y_vals
+
+
+class MainWindow(QMainWindow):
 	def __init__(self):
 		super().__init__()
+		self.spectrum_data = SpectrumData()
+
+		self.csv_sdr_data_filename = "sdr_data.csv"
+		self.csv_data_counter = 0
+		self.waterfall_vertical_size = 1
+		self.waterfall_max_vertical_size = 69
+
 		self.initUI()
+		self.start_animation()
+
 
 	def initUI(self):
 		# Основне вікно
@@ -339,41 +397,45 @@ class MyMainWindow(QMainWindow):
 		# Додаємо віджет для спектра
 		self.spectrum_plot_widget = SpectrumPlotWidget(self.central_widget)
 
-		# Генеруємо випадкові дані для спектра
-		x = np.linspace(0, 10e6, 30)
-		y = np.random.normal(size=30)
-		print(f'{x=}')
-		print(f'{y=}')
-		self.spectrum_plot_widget.curve.setData(x, y)
+
 
 		# Додаємо віджет для водоспаду
 		self.waterfall_plot_widget = WaterfallPlotWidget(self.central_widget)
 
 		# Генеруємо випадкові дані для водоспаду
-		data = {"x": np.arange(2000),
+		"""data = {"x": np.arange(2000),
 				"y": None}
 		datastorage = DataStorage(100)
 		data["y"] = np.random.normal(size=2000)
 		datastorage.update(data)
 		print("123")
 		# datastorage.wait()
-		self.waterfall_plot_widget.update_plot(datastorage)
+		self.waterfall_plot_widget.update_plot(datastorage)"""
 
-		# 2nd pass
-		# data = {"x": np.arange(2000),
-		# 		"y": None}
-		# datastorage = DataStorage(100)
-		# data["y"] = np.random.normal(size=2000)
-		# datastorage.update(data)
-		# # datastorage.wait()
-		# self.waterfall_plot_widget.update_plot(datastorage)
 
 		# Відображення головного вікна
 		self.show()
-		
+
+
+	def start_animation(self):
+		# Create a QTimer to update the spectrum plot widget periodically
+		self.timer = QTimer()
+		self.timer.timeout.connect(self.update_spectrum_plot)
+		self.timer.start(1000)  # Update every 1 second
+
+	def update_spectrum_plot(self):
+		# Generate new random data and update the spectrum plot widget
+		sdr_data = read_lines_from_file(self.csv_sdr_data_filename, self.csv_data_counter, self.waterfall_vertical_size)
+		self.csv_data_counter += 1
+		if self.waterfall_vertical_size < self.waterfall_max_vertical_size:
+			self.waterfall_vertical_size += 1
+
+		x_val, y_val = self.spectrum_data.flatten_xy_for_spectrum(sdr_data[0])
+		self.spectrum_plot_widget.curve.setData(x_val, y_val)
+
 
 if __name__ == '__main__':
 	app = QApplication([])
-	mainWindow = MyMainWindow()
+	mainWindow = MainWindow()
 	app.exec_()
 	#  sys.exit(app.exec_()) # ?

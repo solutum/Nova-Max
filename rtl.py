@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from heatmap import Heatmap
+from utils import read_lines_from_file
 
 
 class GlobalVars:
@@ -254,19 +255,7 @@ def flatten_data_for_spectrum():
 		g.x_vals[-1] /= 1000000.0
 	
 
-def read_lines_from_file(filename, start_line, num_lines):
-	lines = []
-	with open(filename, 'r') as file:
-		# Пропустити перші (start_line - 1) рядків
-		for _ in range(start_line - 1):
-			next(file)
-		# Прочитати наступні num_lines рядків
-		for _ in range(num_lines):
-			line = file.readline().strip()
-			if not line:
-				break
-			lines.append(line)
-	return lines
+
 
 def animate_periodically():
 	animation_poll()  # Викликаємо функцію анімації

@@ -292,5 +292,5 @@ class Test:
 
 
 if __name__ == "__main__":
-    test = Test(int(sys.argv[1]), int(sys.argv[2]))
-    test.run(int(sys.argv[3]))
+    test = Test(10000, 100)
+    test.run(1000)
