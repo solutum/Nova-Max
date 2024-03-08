@@ -2,7 +2,7 @@
 
 # import os
 import sys
-import time
+# import time
 # import subprocess
 import datetime
 import platform
@@ -10,15 +10,16 @@ from collections import defaultdict
 
 import numpy as np
 import tkinter as tk
-from tkinter import ttk
+# from tkinter import ttk
 import PIL.Image as Image
 
-import matplotlib as mpl
+# import matplotlib as mpl
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-import matplotlib.gridspec as gridspec
-import matplotlib.animation as animation
+# import matplotlib.image as mpimg
+# import matplotlib.gridspec as gridspec
+# import matplotlib.animation as animation
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib import style
 
 from heatmap import Heatmap
 
@@ -50,18 +51,20 @@ class global_vars:
 		self.csv_sdr_data_filename = "sdr_data.csv" # .csv
 		self.csv_data_counter = 0
 		self.waterfall_vertical_size = 1
-		self.waterfall_max_vertical_size = 50
+		self.waterfall_max_vertical_size = 69
 
 		self.sweeptime = 3.0
+
+		self.animation_interval = 500 # 1000 - 1 sec
 
 		self.opt_str = ""
 		self.rtl_str = ""
 		self.hmp_str = ""
 		
-		self.stop = 101       # 0 = autostop disabled
+		# self.stop = 101       # 0 = autostop disabled
 							# 1 = autostop when window filled
 							# N = autostop when N sweeps completed
-		self.aspect = 101     # 0 = stretch/shrink window to fill display
+		self.aspect = 70     # 0 = stretch/shrink window to fill display
 							# 1 = force image aspect ratio to window
 							# N = force waterfall to N pixel height
 		self.offset = 0
@@ -109,30 +112,41 @@ def initialize_plot():
 	print("\nInitializing plot... ", end='', flush=True)
 	
 	try:
-		
-		# use tk to get the screen size, and set the plot window to be just 
-		# under the screen size. Note: The reading and setting of display 
-		# sizes on Win10 has not been straightforward. This seems to be 
-		# partly due to dpi scaling on my PC, but other values e.g. from 
-		# get_window_extent don't seem to be correct at all. This needs 
-		# further investigation. The use of "figure" in rcParams and in
 		   
 		g.root = tk.Tk()
-		g.root.title("Графіки з Tkinter та Matplotlib")
-		g.root.geometry("800x600")
+		g.root.title("Nova Max v0.1")
+		g.root.geometry("1200x800")
+
+		# Вертикальний блок з простою формою
+		input_frame = tk.Frame(g.root)
+		input_frame.pack(side=tk.LEFT, fill=tk.BOTH)
+
+		# Текстове поле
+		text_entry = tk.Entry(input_frame)
+		text_entry.pack()
+
+		# Кнопка
+		button = tk.Button(input_frame, text="_btn_")
+		button.pack()
+
+
+		# Один графік з двома підграфіками (Axes)
+		g.fig = plt.figure(figsize=(5, 8), dpi=100)
+		g.ax1 = g.fig.add_subplot(211)
+		g.ax2 = g.fig.add_subplot(212)
 	
-		if (platform.system() == "Windows"):
+		"""if (platform.system() == "Windows"):
 			plt.rcParams["figure.figsize"] = [scrn_width_in, scrn_height_in*0.9]
 			gs = gridspec.GridSpec(g.rows[0], 1, figure=g.fig)
 		else:
-			gs = gridspec.GridSpec(g.rows[0], 1)
+			gs = gridspec.GridSpec(g.rows[0], 1)"""
 			
 		#g.ax1 = g.fig.add_subplot(gs[0:g.rows[1],0])
 		#g.ax2 = g.fig.add_subplot(gs[(g.rows[0]-g.rows[1]):,0])
 		
-		print("\n{}, {}, {}" .format(g.rows, g.rows[0], g.rows[1]))
-		g.ax1 = g.fig.add_subplot(gs[0:g.rows[1],0])
-		g.ax2 = g.fig.add_subplot(gs[g.rows[1]:g.rows[0],0])
+		# print("\n{}, {}, {}" .format(g.rows, g.rows[0], g.rows[1]))
+		"""g.ax1 = g.fig.add_subplot(gs[0:g.rows[1],0])
+		g.ax2 = g.fig.add_subplot(gs[g.rows[1]:g.rows[0],0])"""
 		#g.ax1 = g.fig.add_subplot(gs[0:1,0])
 		#g.ax2 = g.fig.add_subplot(gs[1:3,0])
 
@@ -143,7 +157,7 @@ def initialize_plot():
 		g.ax2.set_facecolor('#000000')
 		g.ax1.set_aspect('auto')
 		g.ax2.set_aspect('auto')
-		g.fig.canvas.draw()
+		# g.fig.canvas.draw() # !
 
 		
 		bbox = g.ax2.get_window_extent().transformed(g.fig.dpi_scale_trans.inverted())
@@ -156,15 +170,24 @@ def initialize_plot():
 		
 		
 		# This is the same code that gets executed by the animation
-		g.ax1.clear()
-		g.ax1.plot(g.x_vals, g.y_vals, color='yellow', linewidth=0.75) 
+		# g.ax1.clear()
+		# g.ax1.plot(g.x_vals, g.y_vals, color='yellow', linewidth=0.75) 
 		# y_min = min(g.y_vals); y_max = max(g.y_vals)
 		# y_diff = y_max-y_min; y_margin = y_diff *0.10
 		# g.ax1.set_ylim([min(g.y_vals)-y_margin, max(g.y_vals)+y_margin])
 		# g.ax1.set_xlim([g.x_vals[0], g.x_vals[-1]])
-		g.ax1.set_xlabel("Frequency (MHz)")
-		g.ax1.set_ylabel("Power (dB)")
-		g.fig.canvas.draw()
+		"""g.ax1.tick_params(axis='both', labelsize=8)
+		g.ax1.set_title("Title", fontsize=12)
+		g.ax1.set_xlabel("Frequency (MHz)", fontsize=10)
+		g.ax1.set_ylabel("Power (dB)", fontsize=10)"""
+		# g.fig.canvas.draw() # !
+
+		# Відображення фігури Matplotlib у вікні Tkinter
+		g.fig.canvas = FigureCanvasTkAgg(g.fig, g.root)
+		# g.fig.canvas.draw()
+		g.fig.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH)
+
+		# Запуск головного циклу подій Tkinter
 				
 		print("done")
 		
@@ -174,22 +197,10 @@ def initialize_plot():
 		print(e)
 
 
-def animation_poll(i):
+def animation_poll():
 	print(f"\nanimation_poll(i): {datetime.datetime.now()}")
 
 	try:
-		# execute this code only while the rtl_power process is running.
-		# while it is running the poll will return None. 
-		# if (g.rtl_proc.poll() == None):
-
-		# cur_csv_size = os.path.getsize(g.csv_path)
-		# if (g.old_csv_size == cur_csv_size):
-		# 	print("no new data to process yet. Exiting.")
-		# 	return
-
-		# g.old_csv_size = cur_csv_size
-
-		# update_csv_data()
 
 		g.csv_data = read_lines_from_file(g.csv_sdr_data_filename, g.csv_data_counter, g.waterfall_vertical_size)
 		g.csv_data_counter += 1
@@ -198,16 +209,15 @@ def animation_poll(i):
 
 		print(f'waterfall_vertical_size = {g.waterfall_vertical_size}')
 
-
 		update_waterfall()
 
 		try:
 			g.ax2.imshow(g.combined_image)
 			g.ax2.set_aspect('auto')
-			g.ax2.set_xlabel("FFT Bins (N)")
-			g.ax2.set_ylabel("Spectrum Sweeps (N)")
-			plt.tight_layout()
-			g.fig.canvas.draw()
+			g.ax2.tick_params(axis='both', labelsize=3)
+			g.ax2.set_xlabel("FFT Bins (N)", fontsize=5)
+			g.ax2.set_ylabel("Spectrum Sweeps (N)", fontsize=5)
+			# g.fig.canvas.draw()
 		except Exception as e:
 			print(f'Error: {e}')
 
@@ -221,23 +231,27 @@ def animation_poll(i):
 			y_diff = y_max-y_min; y_margin = y_diff *0.10
 			g.ax1.set_ylim([min(g.y_vals)-y_margin, max(g.y_vals)+y_margin])
 			g.ax1.set_xlim([g.x_vals[0], g.x_vals[-1]])
-			g.ax1.set_xlabel("Frequency (MHz)")
-			g.ax1.set_ylabel("Power (dB)")
-			plt.tight_layout()
-			g.fig.canvas.draw()
+			g.ax1.tick_params(axis='both', labelsize=3)
+			# g.ax1.set_title("Title", fontsize=10)
+			g.ax1.set_xlabel("Frequency (MHz)", fontsize=5)
+			g.ax1.set_ylabel("Power (dB)", fontsize=5)
+			
 		except Exception as e:
 			# print("\nException occurred in animation_poll")
 			print(e)
+
+		plt.tight_layout()
+		g.fig.canvas.draw()
 		
 		print(f"Finished animation poll at {datetime.datetime.now()}")
 
 		
-		if g.done:
+		"""if g.done:
 			print("\nauto-stop criteria was met.")
 			# stop the animation polling. 
 			g.anim.event_source.stop()
 			# g.rtl_proc.terminate()
-			print("The rtl_power subprocess was terminated.")
+			print("The rtl_power subprocess was terminated.")"""
 
 		# time.sleep(3)		
 
@@ -411,37 +425,25 @@ def read_lines_from_file(filename, start_line, num_lines):
 			lines.append(line)
 	return lines
 
+def animate_periodically():
+	animation_poll()  # Викликаємо функцію анімації
+	g.root.after(g.animation_interval, animate_periodically)  # Повторюємо через 1000 мс (1 с)
 
 def main():
 	
 	try:
-
-		# g.csv_data = read_lines_from_file("from.csv", 0, 3)
-		# flatten_data_for_spectrum()
-
-		# wait_for_initial_data()
-
-		# while(True):
-		#     time.sleep(1)
-		#     update_csv_data()
-		#     #update_waterfall()
-		#     update_spectrum()
-		#     if (len(g.y_vals) > 0):
-		#         g.ready = True
-		#         print("Ready!")
-		#         break
-
-
 		initialize_plot()
 
-		# update_waterfall()
-
+	
 		# g.anim = animation.FuncAnimation(g.fig, animation_poll, interval=g.anim_intvl)
-		g.anim = animation.FuncAnimation(g.fig, animation_poll, interval=1000,  frames=1)
-		plt.tight_layout()
+		"""g.anim = animation.FuncAnimation(g.fig, animation_poll, interval=1000)
+		plt.tight_layout()"""
 		
 		print("\nRunning... ", end='', flush=True)
-		plt.show()
+		# plt.show()
+
+		animate_periodically()
+
 		g.root.mainloop()
 		# time.sleep(40)
 		print("done")

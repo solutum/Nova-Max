@@ -1,49 +1,78 @@
 import tkinter as tk
-from tkinter import ttk
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from matplotlib import style
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import numpy as np
 
-# Створення основного вікна Tkinter
+def animate(i):
+	# Генеруємо випадкові дані для першого графіку
+	num_points = 100
+	xs = np.random.rand(num_points)
+	ys = np.random.rand(num_points)
+	zs = np.random.rand(num_points)
+
+	# Очищаємо перший графік та малюємо нові дані
+	ax1.clear()
+	ax1.plot(xs, ys, zs)
+
+	# Генеруємо випадкові дані для другого графіку
+	xs = np.random.rand(num_points)
+	ys = np.random.rand(num_points)
+	zs = np.random.rand(num_points)
+
+	# Очищаємо другий графік та малюємо нові дані
+	ax2.clear()
+	ax2.tick_params(axis='both', labelsize=8)
+	ax2.set_xlabel('X Label', fontsize=10)
+	ax2.set_ylabel('Y Label', fontsize=10)
+	ax2.set_title('Title', fontsize=12)
+	ax2.plot(xs, ys, zs)
+
+	# Оновлюємо візуалізацію для першого графіку
+	line1.draw()
+
+def animate_periodically():
+	animate(0)  # Викликаємо функцію анімації
+	root.after(1000, animate_periodically)  # Повторюємо через 1000 мс (1 с)
+
 root = tk.Tk()
-root.title("Графіки з Tkinter та Matplotlib")
-root.geometry("800x600")
+root.geometry('800x800')  # Задаємо розмір вікна
 
-# Створення рамки для лівого вертикального блоку з кнопками
-button_frame = ttk.Frame(root, width=200, height=600)
-button_frame.pack(side="left", fill="y")
+# Вертикальний блок з простою формою
+input_frame = tk.Frame(root)
+input_frame.pack(side=tk.LEFT, fill=tk.BOTH)
 
-# Додавання кнопок в лівий блок
-button1 = ttk.Button(button_frame, text="Графік 1")
-button1.pack(pady=10)
-button2 = ttk.Button(button_frame, text="Графік 2")
-button2.pack(pady=10)
+# Текстове поле
+text_entry = tk.Entry(input_frame)
+text_entry.pack()
 
-# Створення рамки для правого блоку з графіками
-plot_frame = ttk.Frame(root)
-plot_frame.pack(side="right", fill="both", expand=True)
+# Кнопка
+button = tk.Button(input_frame, text="Натисни мене")
+button.pack()
 
-# Створення фігури Matplotlib
-fig, axes = plt.subplots(2, 1)
+# Налаштування графіку
+style.use('fivethirtyeight')
 
-# Побудова прикладних графіків
-x = [1, 2, 3, 4, 5]
-y1 = [10, 20, 15, 25, 30]
-y2 = [5, 8, 12, 10, 15]
+# Один графік з двома підграфіками (Axes)
+fig1 = plt.figure(figsize=(5, 8), dpi=100)
+ax1 = fig1.add_subplot(211)
+ax2 = fig1.add_subplot(212)
 
-axes[0].plot(x, y1)
-axes[0].set_title("Графік 1")
-axes[0].set_xlabel("X-ось")
-axes[0].set_ylabel("Y-ось")
+# Зменшуємо розмір шрифту для розмітки осей та інших елементів
+ax1.tick_params(axis='both', labelsize=8)
+ax1.set_xlabel('X Label', fontsize=10)
+ax1.set_ylabel('Y Label', fontsize=10)
+ax1.set_title('Title', fontsize=12)
 
-axes[1].plot(x, y2)
-axes[1].set_title("Графік 2")
-axes[1].set_xlabel("X-ось")
-axes[1].set_ylabel("Y-ось")
+ax2.tick_params(axis='both', labelsize=8)
+ax2.set_xlabel('X Label', fontsize=10)
+ax2.set_ylabel('Y Label', fontsize=10)
+ax2.set_title('Title', fontsize=12)
 
-# Відображення фігури Matplotlib у вікні Tkinter
-canvas = FigureCanvasTkAgg(fig, master=plot_frame)
-canvas.draw()
-canvas.get_tk_widget().pack(fill="both", expand=True)
+line1 = FigureCanvasTkAgg(fig1, root)
+line1.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH)
 
-# Запуск головного циклу подій Tkinter
+animate_periodically()
+
 root.mainloop()

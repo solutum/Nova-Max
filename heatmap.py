@@ -25,7 +25,7 @@ class Heatmap():
 		args['end_time'] = None
 		args['head_time'] = None
 		args['tail_time'] = None
-		args['palette'] = self.custom_palette
+		args['palette'] = self.charolastra_palette
 		r,g,b,x,y = ('000:255:255:025:150').split(":")
 		args['rgbxy'] = (int(r), int(g), int(b), int(x), int(y))
 		args['nolabels'] = True
@@ -33,6 +33,7 @@ class Heatmap():
 
 	def set_sdr_data(self, sdr_data):
 		self.args['db_limit'] = None # oterwise error accumulating
+		sdr_data.reverse()
 		self.sdr_data = sdr_data
 
 	def frange(self, start, stop, step):
@@ -190,7 +191,7 @@ class Heatmap():
 			stop = self.date_parse(t)
 			if self.args['head_time'] is not None and self.args['end_time'] is None:
 				self.args['end_time'] = start + self.args['head_time']
-		print(f'{times=}')
+		# print(f'{times=}')
 
 		if not self.args['db_limit']:
 			self.args['db_limit'] = (min_z, max_z)
