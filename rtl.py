@@ -1,47 +1,17 @@
 # https://github.com/davesmotleyprojects/RTL_SpectrumSweeper
 
-# import os
-import sys
-# import time
-# import subprocess
-import datetime
-import platform
 from collections import defaultdict
-
+import datetime
 import numpy as np
 import tkinter as tk
-# from tkinter import ttk
 import PIL.Image as Image
-
-# import matplotlib as mpl
 import matplotlib.pyplot as plt
-# import matplotlib.image as mpimg
-# import matplotlib.gridspec as gridspec
-# import matplotlib.animation as animation
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib import style
 
 from heatmap import Heatmap
 
 
-# cmd_str = "RTL_SpectrumSweeper -a 75 -s 15 --palette custom -i 3s -e 60m -g 28 -f 88M:108M:5k test.csv"  
-cmd_str = "RTL_SpectrumSweeper -a 101 -s 101 --palette charolastra -c 25% -i 3s -g 28 -f 88M:108M:10k test.csv"         
-#cmd_str = "RTL_SpectrumSweeper -a 101 -s 101 --palette custom --rgbxy 0:255:255:25:150 -c 25% -i 3s -e 60m -g 28 -f 88M:108M:10k test.csv"   
-#cmd_str = "RTL_SpectrumSweeper -a 151 -s 201 -o -125000000 --ratio 5:4 --palette custom --rgbxy 0:255:255:25:150 -i 3s -g 28 -f 132000k:132200k:100 test.csv"    
-# cmd_str = "RTL_SpectrumSweeper -a 151 -s 201 -o -125000000 --ratio 6:2 --palette custom -i 3s -g 28 -f 132000k:132200k:100 test.csv"    
-#cmd_str = "RTL_SpectrumSweeper -a 200 -s 100 -i 3s -e 60m -g 28 -f 88M:108M:5k test.csv" 
-
-print("\n" + cmd_str)
-sys.argv = cmd_str.split()
-
-
-"""############################################################################
-
-	Global Variables
-
-############################################################################"""
-
-class global_vars:
+class GlobalVars:
 	
 	def __init__(self):
 		self.csv_data = []
@@ -104,9 +74,8 @@ class global_vars:
 		self.y_vals = []
 		
 		
-g = global_vars()
+g = GlobalVars()
 		
-
 
 def initialize_plot():
 	print("\nInitializing plot... ", end='', flush=True)
@@ -135,20 +104,7 @@ def initialize_plot():
 		g.ax1 = g.fig.add_subplot(211)
 		g.ax2 = g.fig.add_subplot(212)
 	
-		"""if (platform.system() == "Windows"):
-			plt.rcParams["figure.figsize"] = [scrn_width_in, scrn_height_in*0.9]
-			gs = gridspec.GridSpec(g.rows[0], 1, figure=g.fig)
-		else:
-			gs = gridspec.GridSpec(g.rows[0], 1)"""
-			
-		#g.ax1 = g.fig.add_subplot(gs[0:g.rows[1],0])
-		#g.ax2 = g.fig.add_subplot(gs[(g.rows[0]-g.rows[1]):,0])
-		
-		# print("\n{}, {}, {}" .format(g.rows, g.rows[0], g.rows[1]))
-		"""g.ax1 = g.fig.add_subplot(gs[0:g.rows[1],0])
-		g.ax2 = g.fig.add_subplot(gs[g.rows[1]:g.rows[0],0])"""
-		#g.ax1 = g.fig.add_subplot(gs[0:1,0])
-		#g.ax2 = g.fig.add_subplot(gs[1:3,0])
+
 
 
 		g.ax1.margins(0)
@@ -157,30 +113,11 @@ def initialize_plot():
 		g.ax2.set_facecolor('#000000')
 		g.ax1.set_aspect('auto')
 		g.ax2.set_aspect('auto')
-		# g.fig.canvas.draw() # !
 
-		
 		bbox = g.ax2.get_window_extent().transformed(g.fig.dpi_scale_trans.inverted())
 		g.ax2_w, g.ax2_h = int(bbox.width*g.fig.dpi), int(bbox.height*g.fig.dpi)
 		bgnd = Image.new("RGB",(g.ax2_w,g.ax2_h),'#000000') 
 		g.ax2.imshow(bgnd)
-		
-		#print("ax2 window size: width={}, height={}" .format(g.ax2_w, g.ax2_h))
-		#print("bgnd2 image size: width={}, height={}" .format(bg2.size[0],bg2.size[1]))
-		
-		
-		# This is the same code that gets executed by the animation
-		# g.ax1.clear()
-		# g.ax1.plot(g.x_vals, g.y_vals, color='yellow', linewidth=0.75) 
-		# y_min = min(g.y_vals); y_max = max(g.y_vals)
-		# y_diff = y_max-y_min; y_margin = y_diff *0.10
-		# g.ax1.set_ylim([min(g.y_vals)-y_margin, max(g.y_vals)+y_margin])
-		# g.ax1.set_xlim([g.x_vals[0], g.x_vals[-1]])
-		"""g.ax1.tick_params(axis='both', labelsize=8)
-		g.ax1.set_title("Title", fontsize=12)
-		g.ax1.set_xlabel("Frequency (MHz)", fontsize=10)
-		g.ax1.set_ylabel("Power (dB)", fontsize=10)"""
-		# g.fig.canvas.draw() # !
 
 		# Відображення фігури Matplotlib у вікні Tkinter
 		g.fig.canvas = FigureCanvasTkAgg(g.fig, g.root)
@@ -191,10 +128,8 @@ def initialize_plot():
 				
 		print("done")
 		
-	except Exception as e:
-		
-		print("\nException occurred in initialize_plot")
-		print(e)
+	except Exception as e:		
+		print(f"\nException occurred in initialize_plot: {e}")
 
 
 def animation_poll():
@@ -245,29 +180,14 @@ def animation_poll():
 		
 		print(f"Finished animation poll at {datetime.datetime.now()}")
 
-		
-		"""if g.done:
-			print("\nauto-stop criteria was met.")
-			# stop the animation polling. 
-			g.anim.event_source.stop()
-			# g.rtl_proc.terminate()
-			print("The rtl_power subprocess was terminated.")"""
-
-		# time.sleep(3)		
-
 	except Exception as e:
-		
-		print("\nException occurred in animation_poll")
-		print(e)
-		
+		print(f"\nException occurred in animation_poll: {e}")
 
 	
 def update_waterfall():
 	print("update_waterfall():")
-	# return False
 	
 	try:
-
 		g.heatmap.set_sdr_data(g.csv_data)
 		g.heatmap.summarize_pass()
 		img = g.heatmap.push_pixels()
@@ -277,7 +197,6 @@ def update_waterfall():
 		if ((g.aspect-h1) > 0):
 			bg2 = Image.new("RGB",(w1,g.aspect-h1),'#000000') 
 			w,h = bg2.size
-			#print("bgnd2 image size: width={}, height={}" .format(w,h))
 			g.combined_image = np.concatenate((img, bg2), axis = 0)
 			w,h = g.combined_image.shape[1], g.combined_image.shape[0]
 			#print("combined image size: width={}, height={}" .format(w,h))
@@ -289,84 +208,8 @@ def update_waterfall():
 
 		return False
 		
-		fstr = ("{}.png" .format(g.filename))
-		print("opening: {}" .format(fstr))
-		img1 = Image.open(fstr)
-		#print("opened image file")
-		w1,h1 = img1.size
-		print("image size: width={}, height={}" .format(w1,h1))
-		print("ax2 window size: width={}, height={}" .format(g.ax2_w, g.ax2_h))
-		
-		wpcnt = (g.ax2_w / float(w1))   
-		h2size = int((float(g.ax2_h)/float(wpcnt))-h1)
-		
-		print("wpcnt={}, h2size={}" .format(wpcnt, h2size))
-		print("Remaining window size = {}" .format(h2size))
-		
-		
-		'''
-		self.stop = 0       # 0 = autostop disabled
-							# 1 = autostop when window filled
-							# N = autostop when N sweeps completed
-		self.aspect = 0     # 0 = stretch/shrink window to fill display
-							# 1 = force image aspect ratio to window
-							# N = force waterfall to N pixel height
-		'''
-		
-		
-		# if g.stop == 0 (disabled)
-		if (0 == g.stop):
-			pass # do nothing
-	
-		# if g.stop == 1 (stop when window filled)
-		elif (1 == g.stop):
-			print("auto-stopping in {} sweeps" .format(h2size))
-			# and the window is full
-			if (h2size <= 0):
-				g.done = True  
-		
-		# if g.stop == N (stop after N sweeps)
-		else:
-			# and the waterfal is more than N pixels high
-			print(f"auto-stopping in {(g.stop-h1)} sweeps. {h1} >= g.stop : '{g.stop}'")
-			if (h1 >= g.stop):
-				g.done = True
-			
-
-		if (0 == g.aspect):
-			#print("using unmodified heatmap image")
-			g.combined_image = img1
-			g.tmax = h1
-				
-		elif ((1 == g.aspect) and (h2size > 0)):
-			bg2 = Image.new("RGB",(w1,h2size),'#000000') 
-			w,h = bg2.size
-			#print("bgnd2 image size: width={}, height={}" .format(w,h))
-			g.combined_image = np.concatenate((img1, bg2), axis = 0)
-			w,h = g.combined_image.shape[1], g.combined_image.shape[0]
-			#print("combined image size: width={}, height={}" .format(w,h))
-			g.tmax = h 
-		
-		else:
-			if ((g.aspect-h1) > 0):
-				bg2 = Image.new("RGB",(w1,g.aspect-h1),'#000000') 
-				w,h = bg2.size
-				#print("bgnd2 image size: width={}, height={}" .format(w,h))
-				g.combined_image = np.concatenate((img1, bg2), axis = 0)
-				w,h = g.combined_image.shape[1], g.combined_image.shape[0]
-				#print("combined image size: width={}, height={}" .format(w,h))
-				g.tmax = h
-			else:
-				#print("using unmodified heatmap image")
-				g.combined_image = img1
-				g.tmax = h1
-
-		#print("done")
-		
 	except Exception as e:
-		
-		print("\nException occurred in update_waterfall")
-		print(e)
+		print(f"\nException occurred in update_waterfall: {e}")
 	
 
 def frange(start, stop, step):
