@@ -33,7 +33,9 @@ class Heatmap():
 
 	def set_sdr_data(self, sdr_data):
 		self.args['db_limit'] = None # oterwise error accumulating
-		sdr_data.reverse()
+		# print(sdr_data)
+		# sdr_data.reverse() # no need to pyqtgraph
+		# print("reverse\n", sdr_data)
 		self.sdr_data = sdr_data
 
 	def frange(self, start, stop, step):
@@ -336,7 +338,7 @@ class Heatmap():
 				row[x] = zs[i]
 		yield old_t, row
 
-	def new_push_pixels(self):
+	def v2_push_pixels(self):
 		if self.args['nolabels']:
 			self.args['tape_height'] = -1
 			self.args['tape_pt'] = 0
@@ -368,6 +370,9 @@ class Heatmap():
 			for x in range(len(zs)):
 				average[x] += zs[x]
 			tally += 1
+
+		img = img.transpose(Image.FLIP_TOP_BOTTOM)
+		img = img.transpose(Image.ROTATE_270) # for pyqtgraph
 
 		return img
 	
@@ -405,6 +410,7 @@ class Heatmap():
 				average[x] += zs[x]
 			tally += 1
 		img = img.transpose(Image.FLIP_TOP_BOTTOM)
+		img = img.transpose(Image.ROTATE_270) # for pyqtgraph
 		return img
 
 

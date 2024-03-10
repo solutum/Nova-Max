@@ -1,17 +1,15 @@
 # https://youtu.be/RHmTgapLu4s
-import collections, math
 import numpy as np
-import time
 import pyqtgraph as pg
 
 from collections import defaultdict
 
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtCore import QTimer
-from Qt import QtCore
 
 # from qspectrumanalyzer.data import DataStorage
 from utils import read_lines_from_file
+from heatmap import Heatmap
 
 
 # Basic PyQtGraph settings
@@ -21,8 +19,8 @@ pg.setConfigOptions(antialias=True)
 class SpectrumPlotWidget:
 	"""Main spectrum plot"""
 	def __init__(self, layout):
-		if not isinstance(layout, pg.GraphicsLayoutWidget):
-			raise ValueError("layout must be instance of pyqtgraph.GraphicsLayoutWidget")
+		# if not isinstance(layout, pg.GraphicsLayoutWidget):
+		# 	raise ValueError("layout must be instance of pyqtgraph.GraphicsLayoutWidget")
 
 		self.layout = layout
 
@@ -34,183 +32,49 @@ class SpectrumPlotWidget:
 		self.persistence_color = pg.mkColor("g")
 		self.persistence_data = None
 		self.persistence_curves = None
-		self.peak_hold_max = False
-		self.peak_hold_max_color = pg.mkColor("r")
-		self.peak_hold_min = False
-		self.peak_hold_min_color = pg.mkColor("b")
-		self.average = False
-		self.average_color = pg.mkColor("c")
 
 		self.create_plot()
 
 	def create_plot(self):
 		"""Create main spectrum plot"""
-		self.posLabel = self.layout.addLabel(row=0, col=0, justify="right")
-		self.plot = self.layout.addPlot(row=1, col=0)
+		# self.posLabel = self.layout.addLabel(row=0, col=0, justify="right")
+		self.plot = self.layout.addPlot(row=0, col=0)
 		self.plot.showGrid(x=True, y=True)
 		self.plot.setLabel("left", "Power", units="dB")
 		self.plot.setLabel("bottom", "Frequency", units="Hz")
 		self.plot.setLimits(xMin=0)
-		self.plot.showButtons()
+		self.plot.hideButtons()
+		self.plot.setMouseEnabled(x=False, y=False)  # Disable both panning and zooming
+		# Set a specific width for the left axis
+		self.plot.getAxis("left").setWidth(50)
 
-		#self.plot.setDownsampling(mode="peak")
-		#self.plot.setClipToView(True)
 
-		self.create_persistence_curves()
-		self.create_average_curve()
-		self.create_peak_hold_min_curve()
-		self.create_peak_hold_max_curve()
 		self.create_main_curve()
 
 		# Create crosshair
-		self.vLine = pg.InfiniteLine(angle=90, movable=False)
+		"""self.vLine = pg.InfiniteLine(angle=90, movable=False)
 		self.vLine.setZValue(1000)
 		self.hLine = pg.InfiniteLine(angle=0, movable=False)
 		self.vLine.setZValue(1000)
 		self.plot.addItem(self.vLine, ignoreBounds=True)
 		self.plot.addItem(self.hLine, ignoreBounds=True)
 		self.mouseProxy = pg.SignalProxy(self.plot.scene().sigMouseMoved,
-										 rateLimit=60, slot=self.mouse_moved)
+										 rateLimit=60, slot=self.mouse_moved)"""
 
 	def create_main_curve(self):
 		"""Create main spectrum curve"""
 		self.curve = self.plot.plot(pen=self.main_color)
 		self.curve.setZValue(900)
 
-	def create_peak_hold_max_curve(self):
-		"""Create max. peak hold curve"""
-		self.curve_peak_hold_max = self.plot.plot(pen=self.peak_hold_max_color)
-		self.curve_peak_hold_max.setZValue(800)
+	# def update_plot(self, data_storage, force=False):
+	# 	"""Update main spectrum curve"""
+	# 	if data_storage.x is None:
+	# 		return
 
-	def create_peak_hold_min_curve(self):
-		"""Create min. peak hold curve"""
-		self.curve_peak_hold_min = self.plot.plot(pen=self.peak_hold_min_color)
-		self.curve_peak_hold_min.setZValue(800)
-
-	def create_average_curve(self):
-		"""Create average curve"""
-		self.curve_average = self.plot.plot(pen=self.average_color)
-		self.curve_average.setZValue(700)
-
-	def create_persistence_curves(self):
-		"""Create spectrum persistence curves"""
-		z_index_base = 600
-		decay = self.get_decay()
-		self.persistence_curves = []
-		for i in range(self.persistence_length):
-			alpha = 255 * decay(i + 1, self.persistence_length + 1)
-			color = self.persistence_color
-			curve = self.plot.plot(pen=(color.red(), color.green(), color.blue(), alpha))
-			curve.setZValue(z_index_base - i)
-			self.persistence_curves.append(curve)
-
-	def set_colors(self):
-		"""Set colors of all curves"""
-		self.curve.setPen(self.main_color)
-		self.curve_peak_hold_max.setPen(self.peak_hold_max_color)
-		self.curve_peak_hold_min.setPen(self.peak_hold_min_color)
-		self.curve_average.setPen(self.average_color)
-
-		decay = self.get_decay()
-		for i, curve in enumerate(self.persistence_curves):
-			alpha = 255 * decay(i + 1, self.persistence_length + 1)
-			color = self.persistence_color
-			curve.setPen((color.red(), color.green(), color.blue(), alpha))
-
-	def decay_linear(self, x, length):
-		"""Get alpha value for persistence curve (linear decay)"""
-		return (-x / length) + 1
-
-	def decay_exponential(self, x, length, const=1 / 3):
-		"""Get alpha value for persistence curve (exponential decay)"""
-		return math.e**(-x / (length * const))
-
-	def get_decay(self):
-		"""Get decay function"""
-		if self.persistence_decay == 'exponential':
-			return self.decay_exponential
-		else:
-			return self.decay_linear
-
-	def update_plot(self, data_storage, force=False):
-		"""Update main spectrum curve"""
-		if data_storage.x is None:
-			return
-
-		if self.main_curve or force:
-			self.curve.setData(data_storage.x, data_storage.y)
-			if force:
-				self.curve.setVisible(self.main_curve)
-
-	def update_peak_hold_max(self, data_storage, force=False):
-		"""Update max. peak hold curve"""
-		if data_storage.x is None:
-			return
-
-		if self.peak_hold_max or force:
-			self.curve_peak_hold_max.setData(data_storage.x, data_storage.peak_hold_max)
-			if force:
-				self.curve_peak_hold_max.setVisible(self.peak_hold_max)
-
-	def update_peak_hold_min(self, data_storage, force=False):
-		"""Update min. peak hold curve"""
-		if data_storage.x is None:
-			return
-
-		if self.peak_hold_min or force:
-			self.curve_peak_hold_min.setData(data_storage.x, data_storage.peak_hold_min)
-			if force:
-				self.curve_peak_hold_min.setVisible(self.peak_hold_min)
-
-	def update_average(self, data_storage, force=False):
-		"""Update average curve"""
-		if data_storage.x is None:
-			return
-
-		if self.average or force:
-			self.curve_average.setData(data_storage.x, data_storage.average)
-			if force:
-				self.curve_average.setVisible(self.average)
-
-	def update_persistence(self, data_storage, force=False):
-		"""Update persistence curves"""
-		if data_storage.x is None:
-			return
-
-		if self.persistence or force:
-			if self.persistence_data is None:
-				self.persistence_data = collections.deque(maxlen=self.persistence_length)
-			else:
-				for i, y in enumerate(self.persistence_data):
-					curve = self.persistence_curves[i]
-					curve.setData(data_storage.x, y)
-					if force:
-						curve.setVisible(self.persistence)
-			self.persistence_data.appendleft(data_storage.y)
-
-	def recalculate_plot(self, data_storage):
-		"""Recalculate plot from history"""
-		if data_storage.x is None:
-			return
-
-		QtCore.QTimer.singleShot(0, lambda: self.update_plot(data_storage, force=True))
-		QtCore.QTimer.singleShot(0, lambda: self.update_average(data_storage, force=True))
-		QtCore.QTimer.singleShot(0, lambda: self.update_peak_hold_max(data_storage, force=True))
-		QtCore.QTimer.singleShot(0, lambda: self.update_peak_hold_min(data_storage, force=True))
-
-	def recalculate_persistence(self, data_storage):
-		"""Recalculate persistence data and update persistence curves"""
-		if data_storage.x is None:
-			return
-
-		self.clear_persistence()
-		self.persistence_data = collections.deque(maxlen=self.persistence_length)
-		for i in range(min(self.persistence_length, data_storage.history.history_size - 1)):
-			data = data_storage.history[-i - 2]
-			if data_storage.smooth:
-				data = data_storage.smooth_data(data)
-			self.persistence_data.append(data)
-		QtCore.QTimer.singleShot(0, lambda: self.update_persistence(data_storage, force=True))
+	# 	if self.main_curve or force:
+	# 		self.curve.setData(data_storage.x, data_storage.y)
+	# 		if force:
+	# 			self.curve.setVisible(self.main_curve)
 
 	def mouse_moved(self, evt):
 		"""Update crosshair when mouse is moved"""
@@ -231,96 +95,58 @@ class SpectrumPlotWidget:
 		"""Clear main spectrum curve"""
 		self.curve.clear()
 
-	def clear_peak_hold_max(self):
-		"""Clear max. peak hold curve"""
-		self.curve_peak_hold_max.clear()
-
-	def clear_peak_hold_min(self):
-		"""Clear min. peak hold curve"""
-		self.curve_peak_hold_min.clear()
-
-	def clear_average(self):
-		"""Clear average curve"""
-		self.curve_average.clear()
-
-	def clear_persistence(self):
-		"""Clear spectrum persistence curves"""
-		self.persistence_data = None
-		for curve in self.persistence_curves:
-			curve.clear()
-			self.plot.removeItem(curve)
-		self.create_persistence_curves()
-
 
 class WaterfallPlotWidget:
 	"""Waterfall plot"""
-	def __init__(self, layout, histogram_layout=None):
-		if not isinstance(layout, pg.GraphicsLayoutWidget):
-			raise ValueError("layout must be instance of pyqtgraph.GraphicsLayoutWidget")
-
-		if histogram_layout and not isinstance(histogram_layout, pg.GraphicsLayoutWidget):
-			raise ValueError("histogram_layout must be instance of pyqtgraph.GraphicsLayoutWidget")
+	def __init__(self, layout):
 
 		self.layout = layout
-		self.histogram_layout = histogram_layout
+		# self.histogram_layout = histogram_layout
 
 		self.history_size = 100
 		self.counter = 0
+		self.waterfall_img = None
 
 		self.create_plot()
 
 	def create_plot(self):
 		"""Create waterfall plot"""
-		self.plot = self.layout.addPlot()
+		self.plot = self.layout.addPlot(row=1, col=0)
 		self.plot.setLabel("bottom", "Frequency", units="Hz")
-		self.plot.setLabel("left", "Time")
+		# self.plot.setLabel("left", "Time")
 
+		self.plot.setXRange(0, 2048)
 		self.plot.setYRange(-self.history_size, 0)
-		self.plot.setLimits(xMin=0, yMax=0)
-		self.plot.showButtons()
+		self.plot.setLimits(xMax=2048)
+		self.plot.hideButtons()
 		#self.plot.setAspectLocked(True)
+		self.plot.setMouseEnabled(x=False, y=False)  # Disable both panning and zooming
+		# self.plot.autoRange()
+
+		self.waterfall_img = pg.ImageItem()
+		self.plot.addItem(self.waterfall_img)
+
+		# Set a specific width for the left axis
+		self.plot.getAxis("left").setWidth(50)
 
 		#self.plot.setDownsampling(mode="peak")
 		#self.plot.setClipToView(True)
 
 		# Setup histogram widget (for controlling waterfall plot levels and gradients)
-		if self.histogram_layout:
+		"""if self.histogram_layout:
 			self.histogram = pg.HistogramLUTItem()
 			self.histogram_layout.addItem(self.histogram)
 			self.histogram.gradient.loadPreset("flame")
 			#self.histogram.setHistogramRange(-50, 0)
-			#self.histogram.setLevels(-50, 0)
+			#self.histogram.setLevels(-50, 0)"""
 
-	def update_plot(self, data_storage):
-		"""Update waterfall plot"""
-		self.counter += 1
+	
+	def update_image(self, img_array, img_offset):
+		"""Update the image in the waterfall plot"""
+		self.waterfall_img.setImage(img_array)
 
-		# Create waterfall image on first run
-		if self.counter == 1:
-			self.waterfallImg = pg.ImageItem()
-			scale_factor = (data_storage.x[-1] - data_storage.x[0]) / len(data_storage.x)
-			print(f'\n\n\n\n\n\n{scale_factor=}')
-			# self.waterfallImg.scale(scale_factor, 1)
-			self.plot.clear()
-			self.plot.addItem(self.waterfallImg)
-
-		# Roll down one and replace leading edge with new data
-		self.waterfallImg.setImage(data_storage.history.buffer[-self.counter:].T,
-								   autoLevels=False, autoRange=False, levels=(0, 255))
-
-		# Move waterfall image to always start at 0
-		self.waterfallImg.setPos(
-			data_storage.x[0],
-			-self.counter if self.counter < self.history_size else -self.history_size
-		)
-		print('counter = ', self.counter)
-
-		# Link histogram widget to waterfall image on first run
-		# (must be done after first data is received or else levels would be wrong)
-		if self.counter == 1 and self.histogram_layout:
-			print('a')
-			self.histogram.setImageItem(self.waterfallImg)
-		print('b')
+		self.waterfall_img.scale()
+		self.waterfall_img.setPos(0, img_offset)
 
 
 	def clear_plot(self):
@@ -375,11 +201,13 @@ class MainWindow(QMainWindow):
 	def __init__(self):
 		super().__init__()
 		self.spectrum_data = SpectrumData()
+		self.heatmap = Heatmap()
+
 
 		self.csv_sdr_data_filename = "sdr_data.csv"
 		self.csv_data_counter = 0
 		self.waterfall_vertical_size = 1
-		self.waterfall_max_vertical_size = 69
+		self.waterfall_max_vertical_size = 100
 
 		self.initUI()
 		self.start_animation()
@@ -388,7 +216,7 @@ class MainWindow(QMainWindow):
 	def initUI(self):
 		# Основне вікно
 		self.setWindowTitle('Spectrum and Waterfall Plot')
-		self.setGeometry(100, 100, 800, 600)
+		self.setGeometry(100, 100, 1000, 600)
 
 		# Віджет для розміщення графіки
 		self.central_widget = pg.GraphicsLayoutWidget()
@@ -397,21 +225,8 @@ class MainWindow(QMainWindow):
 		# Додаємо віджет для спектра
 		self.spectrum_plot_widget = SpectrumPlotWidget(self.central_widget)
 
-
-
 		# Додаємо віджет для водоспаду
 		self.waterfall_plot_widget = WaterfallPlotWidget(self.central_widget)
-
-		# Генеруємо випадкові дані для водоспаду
-		"""data = {"x": np.arange(2000),
-				"y": None}
-		datastorage = DataStorage(100)
-		data["y"] = np.random.normal(size=2000)
-		datastorage.update(data)
-		print("123")
-		# datastorage.wait()
-		self.waterfall_plot_widget.update_plot(datastorage)"""
-
 
 		# Відображення головного вікна
 		self.show()
@@ -420,18 +235,33 @@ class MainWindow(QMainWindow):
 	def start_animation(self):
 		# Create a QTimer to update the spectrum plot widget periodically
 		self.timer = QTimer()
-		self.timer.timeout.connect(self.update_spectrum_plot)
-		self.timer.start(1000)  # Update every 1 second
+		self.timer.timeout.connect(self.update_plot)
+		self.timer.start(1000)  # Update every 1 (1000ms) second
 
-	def update_spectrum_plot(self):
+	def update_plot(self):
 		# Generate new random data and update the spectrum plot widget
 		sdr_data = read_lines_from_file(self.csv_sdr_data_filename, self.csv_data_counter, self.waterfall_vertical_size)
-		self.csv_data_counter += 1
 		if self.waterfall_vertical_size < self.waterfall_max_vertical_size:
 			self.waterfall_vertical_size += 1
+		else:
+			self.csv_data_counter += 1
 
-		x_val, y_val = self.spectrum_data.flatten_xy_for_spectrum(sdr_data[0])
+
+		# SPECTRUM
+		x_val, y_val = self.spectrum_data.flatten_xy_for_spectrum(sdr_data[-1])
 		self.spectrum_plot_widget.curve.setData(x_val, y_val)
+
+		# WATERFALL
+		self.heatmap.set_sdr_data(sdr_data)
+		self.heatmap.summarize_pass()
+		img = self.heatmap.push_pixels()
+
+		# Convert PIL image to numpy array
+		img_array = np.array(img)
+		# print(img_array.shape)
+
+		self.waterfall_plot_widget.update_image(img_array, self.waterfall_vertical_size * -1)
+
 
 
 if __name__ == '__main__':

@@ -1,78 +1,121 @@
-import tkinter as tk
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from matplotlib import style
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+# -*- coding: utf-8 -*-
+"""
+Demonstrates common image analysis tools.
+
+Many of the features demonstrated here are already provided by the ImageView
+widget, but here we present a lower-level approach that provides finer control
+over the user interface.
+"""
+import initExample ## Add path to library (just for examples; you do not need this)
+
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtCore, QtGui
 import numpy as np
 
-def animate(i):
-	# Генеруємо випадкові дані для першого графіку
-	num_points = 100
-	xs = np.random.rand(num_points)
-	ys = np.random.rand(num_points)
-	zs = np.random.rand(num_points)
 
-	# Очищаємо перший графік та малюємо нові дані
-	ax1.clear()
-	ax1.plot(xs, ys, zs)
+# Interpret image data as row-major instead of col-major
+pg.setConfigOptions(imageAxisOrder='row-major')
 
-	# Генеруємо випадкові дані для другого графіку
-	xs = np.random.rand(num_points)
-	ys = np.random.rand(num_points)
-	zs = np.random.rand(num_points)
+pg.mkQApp()
+win = pg.GraphicsLayoutWidget()
+win.setWindowTitle('pyqtgraph example: Image Analysis')
 
-	# Очищаємо другий графік та малюємо нові дані
-	ax2.clear()
-	ax2.tick_params(axis='both', labelsize=8)
-	ax2.set_xlabel('X Label', fontsize=10)
-	ax2.set_ylabel('Y Label', fontsize=10)
-	ax2.set_title('Title', fontsize=12)
-	ax2.plot(xs, ys, zs)
+# A plot area (ViewBox + axes) for displaying the image
+p1 = win.addPlot(title="")
 
-	# Оновлюємо візуалізацію для першого графіку
-	line1.draw()
+# Item for displaying image data
+img = pg.ImageItem()
+p1.addItem(img)
 
-def animate_periodically():
-	animate(0)  # Викликаємо функцію анімації
-	root.after(1000, animate_periodically)  # Повторюємо через 1000 мс (1 с)
+# Custom ROI for selecting an image region
+roi = pg.ROI([-8, 14], [6, 5])
+roi.addScaleHandle([0.5, 1], [0.5, 0.5])
+roi.addScaleHandle([0, 0.5], [0.5, 0.5])
+p1.addItem(roi)
+roi.setZValue(10)  # make sure ROI is drawn above image
 
-root = tk.Tk()
-root.geometry('800x800')  # Задаємо розмір вікна
+# Isocurve drawing
+iso = pg.IsocurveItem(level=0.8, pen='g')
+iso.setParentItem(img)
+iso.setZValue(5)
 
-# Вертикальний блок з простою формою
-input_frame = tk.Frame(root)
-input_frame.pack(side=tk.LEFT, fill=tk.BOTH)
+# Contrast/color control
+hist = pg.HistogramLUTItem()
+hist.setImageItem(img)
+win.addItem(hist)
 
-# Текстове поле
-text_entry = tk.Entry(input_frame)
-text_entry.pack()
+# Draggable line for setting isocurve level
+isoLine = pg.InfiniteLine(angle=0, movable=True, pen='g')
+hist.vb.addItem(isoLine)
+hist.vb.setMouseEnabled(y=False) # makes user interaction a little easier
+isoLine.setValue(0.8)
+isoLine.setZValue(1000) # bring iso line above contrast controls
 
-# Кнопка
-button = tk.Button(input_frame, text="Натисни мене")
-button.pack()
+# Another plot area for displaying ROI data
+win.nextRow()
+p2 = win.addPlot(colspan=2)
+p2.setMaximumHeight(250)
+win.resize(800, 800)
+win.show()
 
-# Налаштування графіку
-style.use('fivethirtyeight')
 
-# Один графік з двома підграфіками (Axes)
-fig1 = plt.figure(figsize=(5, 8), dpi=100)
-ax1 = fig1.add_subplot(211)
-ax2 = fig1.add_subplot(212)
+# Generate image data
+data = np.random.normal(size=(200, 100))
+data[20:80, 20:80] += 2.
+data = pg.gaussianFilter(data, (3, 3))
+data += np.random.normal(size=(200, 100)) * 0.1
+img.setImage(data)
+hist.setLevels(data.min(), data.max())
 
-# Зменшуємо розмір шрифту для розмітки осей та інших елементів
-ax1.tick_params(axis='both', labelsize=8)
-ax1.set_xlabel('X Label', fontsize=10)
-ax1.set_ylabel('Y Label', fontsize=10)
-ax1.set_title('Title', fontsize=12)
+# build isocurves from smoothed data
+iso.setData(pg.gaussianFilter(data, (2, 2)))
 
-ax2.tick_params(axis='both', labelsize=8)
-ax2.set_xlabel('X Label', fontsize=10)
-ax2.set_ylabel('Y Label', fontsize=10)
-ax2.set_title('Title', fontsize=12)
+# set position and scale of image
+img.scale(0.2, 0.2)
+img.translate(-50, 0)
 
-line1 = FigureCanvasTkAgg(fig1, root)
-line1.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH)
+# zoom to fit imageo
+p1.autoRange()  
 
-animate_periodically()
 
-root.mainloop()
+# Callbacks for handling user interaction
+def updatePlot():
+    global img, roi, data, p2
+    selected = roi.getArrayRegion(data, img)
+    p2.plot(selected.mean(axis=0), clear=True)
+
+roi.sigRegionChanged.connect(updatePlot)
+updatePlot()
+
+def updateIsocurve():
+    global isoLine, iso
+    iso.setLevel(isoLine.value())
+
+isoLine.sigDragged.connect(updateIsocurve)
+
+def imageHoverEvent(event):
+    """Show the position, pixel, and value under the mouse cursor.
+    """
+    if event.isExit():
+        p1.setTitle("")
+        return
+    pos = event.pos()
+    i, j = pos.y(), pos.x()
+    i = int(np.clip(i, 0, data.shape[0] - 1))
+    j = int(np.clip(j, 0, data.shape[1] - 1))
+    val = data[i, j]
+    ppos = img.mapToParent(pos)
+    x, y = ppos.x(), ppos.y()
+    p1.setTitle("pos: (%0.1f, %0.1f)  pixel: (%d, %d)  value: %g" % (x, y, i, j, val))
+
+# Monkey-patch the image to use our custom hover function. 
+# This is generally discouraged (you should subclass ImageItem instead),
+# but it works for a very simple use like this. 
+img.hoverEvent = imageHoverEvent
+
+
+## Start Qt event loop unless running in interactive mode or using pyside.
+if __name__ == '__main__':
+    import sys
+    if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
+        QtGui.QApplication.instance().exec_()
