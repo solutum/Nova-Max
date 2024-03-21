@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow
 from PIL import Image
 
 from utils import read_lines_from_file
-from heatmap import Heatmap
+from plot.heatmap import Heatmap
 
 
 # Basic PyQtGraph settings
@@ -36,6 +36,9 @@ class WaterfallPlotWidget:
 		self.plot1 = self.layout.addPlot(row=0, col=0) # add another graph
 		self.plot.setLabel("bottom", "Frequency", units="Hz")
 		# self.plot.setLabel("left", "Time")
+
+		self.plot1.setTitle("Назва графіку", color='white', size='22pt')
+
 
 		# Set the Y-range to cover the entire negative range of the image
 		self.plot.setYRange(-self.history_size, 0)

@@ -8,7 +8,7 @@ import PIL.Image as Image
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-from heatmap import Heatmap
+from plot.heatmap import Heatmap
 from utils import read_lines_from_file
 
 
