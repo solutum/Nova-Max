@@ -15,6 +15,7 @@ from plot.Graph import Graph
 
 class Signals(QObject):
 	show_alert = pyqtSignal(str, str)
+	graph_update = pyqtSignal(dict)
 
 
 class NovaApp(MainWindow):
@@ -29,12 +30,13 @@ class NovaApp(MainWindow):
 		super().__init__()
 		self.sdr_config = dict()
 
+		self.graph = Graph(self)
+
 		self.signals = Signals()
 		self.signals.show_alert.connect(self.show_alert)
+		self.signals.graph_update.connect(self.graph.update)
 		# self.get_config_timer = QTimer(self)
 		# self.get_config_timer.timeout.connect(self.on_get_config_timer_timeout)
-
-		self.graph = Graph(self)
 
 		self.need_to_show_save_msg = False
 
@@ -54,7 +56,7 @@ class NovaApp(MainWindow):
 	# ! ################
 	def on_scan_range_data(self, sdr_data):
 		# print(sdr_data)
-		print(len(sdr_data['signals']['all']))
+		# print(len(sdr_data['signals']['all']))
 
 		if self.need_to_show_save_msg:
 			# self.logger.log_message(f"on_save_btn. Config was saved.")
@@ -67,7 +69,10 @@ class NovaApp(MainWindow):
 			# self.get_config_timer.start(3000)  # load current configs just in case
 
 		elif len(sdr_data['signals']['all']) > 0:
-			self.graph.update(sdr_data)
+			# self.graph.update(sdr_data)
+			self.signals.graph_update.emit(sdr_data)
+
+
 
 	def closeEvent(self, event):
 		self.log_window.close()

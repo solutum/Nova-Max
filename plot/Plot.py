@@ -16,7 +16,7 @@ class Plot():
 		self.signals = Signals()
 		self.signals.set_plot_title.connect(self.set_plot_title)
 
-		self.waterfall_max_vertical_size = 70
+		self.waterfall_max_vertical_size = 70 # Y - AXIS
 
 		# SPECTRUM
 		self.spectrum = getattr(self.win, f'graphSpectrum_{plot_index}')
@@ -45,8 +45,7 @@ class Plot():
 		waterfall_plot.addItem(self.waterfall)
 		# set palette
 		self.waterfall.setLookupTable(self.charolastra_palette())
-		# palette_with_black_background = [(0, 0, 0)] + self.charolastra_palette()[1:]  # Додаємо чорний колір на початок палітри
-		# self.waterfalls[i].setLookupTable(palette_with_black_background)
+
 		# waterfall history
 		self.waterfall_data = None
 
@@ -62,18 +61,15 @@ class Plot():
 
 	def update_waterfall(self, y):
 		if self.waterfall_data is None:
-			self.waterfall_data = np.zeros((len(y), self.waterfall_max_vertical_size))
+			self.waterfall_data = np.full((len(y), self.waterfall_max_vertical_size), -100)
 
 		for i in range(-self.waterfall_max_vertical_size, -1, 1):
 			self.waterfall_data[:, i] = self.waterfall_data[:, i+1]
 
 		self.waterfall_data[:, -1] = y
 
-		# Оновлення графіка "водоспаду"
-		self.waterfall.setLookupTable(self.charolastra_palette())
-		self.waterfall.setImage(self.waterfall_data, autoLevels=True, levels=(0, 1)) #), autoDownsample=False)  # Встановлення автоматичних рівнів для кольорової палітри
-		# palette_with_black_background = [(0, 0, 0)] + self.charolastra_palette()[1:]  # Додаємо чорний колір на початок палітри
-		# self.waterfalls[plot_id].setLookupTable(palette_with_black_background)
+		self.waterfall.setImage(self.waterfall_data, autoLevels=False, levels=(-100, 0))  # Встановлення широкого діапазону рівнів кольорів
+
 
 
 	def get_xy_for_spectrum(self, data):
@@ -93,6 +89,7 @@ class Plot():
 			c = colorsys.hsv_to_rgb(0.65-(g-0.08), 1, 0.2+g)
 			p.append((int(c[0]*256), int(c[1]*256), int(c[2]*256)))
 		return p
+
 	
 	def emit_plot_title(self, title):
 		self.signals.set_plot_title.emit(title)
