@@ -3,20 +3,18 @@ import sys
 import json
 from pprint import pprint
 from PyQt5.QtWidgets import QApplication, QFileDialog
-from PyQt5.QtCore import pyqtSignal, QObject, QDir
-# https://build-system.fman.io/qt-designer-download
+from PyQt5.QtCore import pyqtSignal, QObject, QDir, QTimer
 
 from components.SocketConnection import SocketConnection
-from components.Logger import Logger
+# from components.Logger import Logger
 from components.OutputCommand import OutputCommand
 from components.EventHandler import EventHandler
 from windows.MainWindow import MainWindow
-from windows.PlotWindow import PlotWindow
+from plot.Graph import Graph
 
 
 class Signals(QObject):
 	show_alert = pyqtSignal(str, str)
-	show_plot_window = pyqtSignal()
 
 
 class NovaApp(MainWindow):
@@ -32,11 +30,11 @@ class NovaApp(MainWindow):
 		self.sdr_config = dict()
 
 		self.signals = Signals()
-		# self.signals.about_to_close.connect(self.about_to_close)
 		self.signals.show_alert.connect(self.show_alert)
-		self.signals.show_plot_window.connect(self.show_plot_window)
+		# self.get_config_timer = QTimer(self)
+		# self.get_config_timer.timeout.connect(self.on_get_config_timer_timeout)
 
-		self.plot = PlotWindow("2250-2440 MHz   -30.0 dB")
+		self.graph = Graph(self)
 
 		self.need_to_show_save_msg = False
 
@@ -54,20 +52,27 @@ class NovaApp(MainWindow):
 
 
 	# ! ################
-	def on_scan_range_data(self, data):
-		pprint(data)
-		self.plot.update_plot(data['signals']['all'])
+	def on_scan_range_data(self, sdr_data):
+		# print(sdr_data)
+		print(len(sdr_data['signals']['all']))
+
 		if self.need_to_show_save_msg:
 			# self.logger.log_message(f"on_save_btn. Config was saved.")
-			# self.show_alert("Alert", "Config was saved.")
 			self.signals.show_alert.emit("Alert", "Config was saved.")
 			self.need_to_show_save_msg = False
 			self.set_connected_status_label("Connected", "green")
 
+			# self.on_get_config_btn()
+			# TODO
+			# self.get_config_timer.start(3000)  # load current configs just in case
+
+		elif len(sdr_data['signals']['all']) > 0:
+			self.graph.update(sdr_data)
+
 	def closeEvent(self, event):
 		self.log_window.close()
-		if hasattr(self, 'plot'):
-			self.plot.close()
+		# if hasattr(self, 'plot'):
+		# 	self.plot.close()
 		self.socketConnection.thread_stop_listening()
 		# sys.exit(0)
 	
@@ -79,35 +84,20 @@ class NovaApp(MainWindow):
 		self.sdr_config = data
 		pprint(data["SCAN_RANGES"])
 		self.update_form_configs(data["SCAN_RANGES"])
+	# def on_get_config_timer_timeout(self):
+	# 	self.on_get_config_btn()
 
 
 	def on_status_change(self, is_ok_status, message):
 		if is_ok_status:
 			self.set_connected_status_label(message, "green")
 			self.form_enabled_status(True)
-			
-			# self.show_plot_window()
-			# self.signals.show_plot_window.emit()
 
 			self.on_get_config_btn()
 		else:
 			self.need_to_show_save_msg = False
 			self.set_connected_status_label(message, "red")
 			self.form_enabled_status(False)
-
-
-	# def cb_open_log_window(self):
-	# 	self.logging_window.show()
-	# 	self.logger.log_message("Log window opened.")
-
-	
-	def show_plot_window(self):
-		try:
-			
-			self.plot.show()
-			# self.plot.start_animation()
-		except Exception as e:
-			print(e)
 
 
 	def config_file_prase(self, file_data):
@@ -124,8 +114,9 @@ class NovaApp(MainWindow):
 			self.show_alert("Alert", "Wrong json config file!")
 
 
-	# ############# BTN ################
+	# !############# BTN ################
 	def on_connect_btn(self):
+		self.setFocus()
 		host = self.get_form_val('address_entry')
 		port = self.__class__.DEFAULT_PORT
 		# print(host, port)
@@ -136,7 +127,7 @@ class NovaApp(MainWindow):
 		)
 
 	def on_get_config_btn(self):
-		# self.setFocus()
+		self.setFocus()
 		print("on_get_config_btn()")
 		self.outputCommand.get_configs()
 
@@ -153,14 +144,16 @@ class NovaApp(MainWindow):
 		
 
 	def on_reset_btn(self):
-		# self.setFocus()
+		self.setFocus()
 		print("on_reset_btn.")
 		self.outputCommand.reset_configs()
+		# RESET ALL GRAPHS
+		self.graph.reset()
 		self.on_get_config_btn()
 
 
 	def on_save_btn(self):
-		# self.setFocus()
+		self.setFocus()
 		print("on_save_btn():")
 
 		# self.sdr_config
@@ -188,6 +181,8 @@ class NovaApp(MainWindow):
 						raise ValueError
 				except ValueError:
 					print("Entry correct data")
+					self.signals.show_alert.emit("Error", "Entry correct data.")
+					return False
 
 		updated_config = self.sdr_config
 
@@ -195,6 +190,9 @@ class NovaApp(MainWindow):
 		# pprint(updated_config)
 
 		self.outputCommand.save_configs(updated_config)
+		
+		# RESET ALL GRAPHS
+		self.graph.reset()
 
 		self.need_to_show_save_msg = True
 		self.set_connected_status_label("Trying to save new config ...")

@@ -1,10 +1,9 @@
 from PyQt5.uic import loadUi
-from PyQt5.QtWidgets import QMainWindow, QMessageBox
-import netifaces as ni
+from PyQt5.QtWidgets import QMainWindow, QMessageBox, QDesktopWidget
 
 from windows.LogWindow import LogWindow
 from components.Logger import Logger
-
+from utils import get_my_local_ip, get_server_ip_from_local_ip
 
 class MainWindow(QMainWindow):
 	def __init__(self):
@@ -20,13 +19,13 @@ class MainWindow(QMainWindow):
 		# https://build-system.fman.io/qt-designer-download
 		loadUi("window.ui", self)
 
-		my_local_ip = self.get_my_local_ip()
+		my_local_ip = get_my_local_ip()
 
 		self.setWindowTitle(self.WIN_TITLE + "   |   Local IP: " + my_local_ip)
 		if hasattr(self, 'DEBUG_DEFAULT_IP'):
 			self.address_entry.setText(self.DEBUG_DEFAULT_IP)
 		else:
-			self.address_entry.setText(self.get_server_ip_from_local_ip(my_local_ip))
+			self.address_entry.setText(get_server_ip_from_local_ip(my_local_ip))
 
 		self.menu_show_log.triggered.connect(self.on_menu_show_log)
 		self.menu_show_help.triggered.connect(self.on_menu_show_help)
@@ -102,31 +101,15 @@ CONTACT_INFO
 		self.save_btn.setEnabled(enabled)
 
 
-	def get_my_local_ip(self):
-		try:
-			interfaces = ni.interfaces()
-			for interface in interfaces:
-				if ni.AF_INET in ni.ifaddresses(interface):
-					ip_address = ni.ifaddresses(interface)[ni.AF_INET][0]['addr']
-					# Перевірка, що IP-адреса не є локальною (127.0.0.1)
-					if ip_address != '127.0.0.1':
-						return ip_address
-		except Exception as e:
-			self.logger.log_message(f'get_my_local_ip(): {e}')
-			return ''
-		return ''
-	
-	def get_server_ip_from_local_ip(self, local_ip):
-		octets = local_ip.split(".")
-		# Замінити останню частину на "1"
-		octets[-1] = "1"
-		# Об'єднати частини адреси знову
-		server_ip = ".".join(octets)
-		return server_ip
+
 	
 	def show_alert(self, title, message):
 		alert = QMessageBox()
 		alert.setWindowTitle(title)
 		alert.setText(str(message))
 		alert.setStandardButtons(QMessageBox.Ok)
+
+		alert.setStyleSheet("QMessageBox {width: 200px; height: 300px;}")
+		alert.setFixedSize(200, 300)
+		
 		alert.exec_()

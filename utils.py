@@ -1,3 +1,6 @@
+import netifaces as ni
+
+
 def read_lines_from_file(filename, start_line, num_lines):
 	lines = []
 	with open(filename, 'r') as file:
@@ -43,3 +46,23 @@ def prepare_sdr_data(sdr_data):
 	return prepared_data
 
 	
+def get_my_local_ip():
+	try:
+		interfaces = ni.interfaces()
+		for interface in interfaces:
+			if ni.AF_INET in ni.ifaddresses(interface):
+				ip_address = ni.ifaddresses(interface)[ni.AF_INET][0]['addr']
+				# Перевірка, що IP-адреса не є локальною (127.0.0.1)
+				if ip_address != '127.0.0.1':
+					return ip_address
+	except Exception as e:
+		raise Exception(f'get_my_local_ip(): {e}')
+	return ''
+
+def get_server_ip_from_local_ip(local_ip):
+	octets = local_ip.split(".")
+	# Замінити останню частину на "1"
+	octets[-1] = "1"
+	# Об'єднати частини адреси знову
+	server_ip = ".".join(octets)
+	return server_ip
