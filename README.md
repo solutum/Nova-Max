@@ -1,4 +1,4 @@
-Desktop application for changing raspberry settings and visualizing data with hack RF, developed in Python using Qt. Provided for educational purposes only.<br>
+Desktop application for changing Raspberry Pi settings and visualizing data with HackRF, developed in Python using Qt. Provided for educational purposes only.<br>
 Raspberry-side software is not provided.
 
 Tested on MacOS only
